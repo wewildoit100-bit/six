@@ -1,8 +1,6 @@
 <!doctype html>
 <html lang="en">
 <head>
-
-
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WalletConnect Picker — Light</title>
@@ -193,9 +191,9 @@
       try {
         statusEl.textContent = 'Opening wallet picker...';
         // connect() will open the picker/modal if modal UMD is present; otherwise it attempts pairing/scanning.
-await provider.connect({ pairingTopic: null });
+        await provider.connect();
 
-// request accounts
+        // request accounts
         const accounts = await provider.request({ method: 'eth_requestAccounts' });
         connectedAccount = accounts && accounts[0] ? accounts[0] : null;
         statusEl.textContent = connectedAccount ? `Connected: ${connectedAccount}` : 'Connected (no account returned)';
