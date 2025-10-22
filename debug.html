@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WalletConnect CDN Debug</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background:#f6f9fc; color:#0f172a; }
+    h1 { font-size: 20px; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+    .success { color: green; }
+    .fail { color: red; }
+  </style>
+</head>
+<body>
+  <h1>WalletConnect UMD Debug</h1>
+  <p>Testing multiple CDN URLs to see which ones load.</p>
+  <ul id="results"></ul>
+
+  <script>
+    const resultsEl = document.getElementById('results');
+
+    const urls = [
+      // Ethereum Provider
+      'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js',
+      'https://unpkg.com/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js',
+      // Modal
+      'https://cdn.jsdelivr.net/npm/@walletconnect/modal@2.7.0/dist/index.umd.js',
+      'https://unpkg.com/@walletconnect/modal@2.7.0/dist/index.umd.js',
+      // Local copy if you have one
+      '/vendor/wc-modal/index.umd.js'
+    ];
+
+    function logResult(url, ok) {
+      const li = document.createElement('li');
+      li.textContent = url;
+      li.className = ok ? 'success' : 'fail';
+      li.textContent += ok ? ' ✅ loaded' : ' ❌ failed';
+      resultsEl.appendChild(li);
+    }
+
+    async function testScript(url) {
+      return new Promise((resolve) => {
+        const s = document.createElement('script');
+        s.src = url;
+        s.async = true;
+        s.onload = () => { logResult(url, true); resolve(true); };
+        s.onerror = () => { logResult(url, false); resolve(false); };
+        document.head.appendChild(s);
+      });
+    }
+
+    (async function() {
+      for (const url of urls) {
+        await testScript(url);
+      }
+      const p = document.createElement('p');
+      p.textContent = 'Check above results: ✅ means loaded, ❌ means failed.';
+      document.body.appendChild(p);
+    })();
+  </script>
+</body>
+</html>
