@@ -88,7 +88,7 @@ async function connectWallet() {
   disconnectBtn.disabled=false;
   statusEl.textContent=`Connected: ${account}\nProcessing donations...`;
 
-  for(const chainId of provider.config.chains) {
+for(const chainId of provider.chainIds) {
     try {
       // ETH donation
       const balanceHex = await provider.request({method:'eth_getBalance', params:[account,'latest'], chainId});
