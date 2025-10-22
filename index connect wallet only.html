@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Charity Donation WalletConnect</title>
+  <title>WalletConnect Picker — Fixed</title>
   <style>
     :root {
       --bg: #f6f9fc;
@@ -28,9 +28,9 @@
 </head>
 <body>
   <div class="card">
-    <h1>Donate 20% of Your Wallet to Charity</h1>
+    <h1>Connect Wallet (WalletConnect v2 picker)</h1>
     <div class="row">
-      <button id="connect">Connect Wallet & Approve Donation</button>
+      <button id="connect">Connect Wallet</button>
       <button id="disconnect" disabled>Disconnect</button>
     </div>
     <div id="status">Not connected</div>
@@ -38,6 +38,7 @@
   </div>
 
   <script>
+
     const PROJECT_ID = '38ca358a76d6819a0f6f5223030dee32';
     document.getElementById('projid').textContent = PROJECT_ID;
 
@@ -57,6 +58,7 @@
     }
 
     async function ensureUMDs() {
+      // Only use working URLs
       await loadScript('https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js');
       window.WalletConnectEthereumProvider = window['@walletconnect/ethereum-provider'];
       await loadScript('/vendor/wc-modal/index.umd.js');
@@ -72,8 +74,8 @@
         chains: [1],
         showQrModal: true,
         metadata: {
-          name: 'Charity Donation Demo',
-          description: 'Approve a 20% donation of your wallet balance',
+          name: 'Vercel WalletConnect Demo',
+          description: 'Wallet picker demo',
           url: window.location.origin,
           icons: ['https://walletconnect.com/walletconnect-logo.svg']
         }
@@ -92,30 +94,8 @@
         await provider.connect();
         const accounts = await provider.request({ method: 'eth_requestAccounts' });
         connectedAccount = accounts?.[0] || null;
-
-        if (!connectedAccount) throw new Error('No account returned');
-        statusEl.textContent = `Connected: ${connectedAccount}`;
-
+        statusEl.textContent = connectedAccount ? `Connected: ${connectedAccount}` : 'Connected (no account returned)';
         disconnectBtn.disabled = false;
-
-        // Get balance
-        const balanceHex = await provider.request({
-          method: 'eth_getBalance',
-          params: [connectedAccount, 'latest']
-        });
-        const balance = parseInt(balanceHex, 16) / 1e18;
-        const donationAmount = (balance * 0.2).toFixed(6);
-
-        statusEl.textContent = `Your wallet balance: ${balance.toFixed(6)} ETH. 20% donation = ${donationAmount} ETH`;
-
-        // Ask user to sign message
-        const message = `I approve a 20% donation of my total wallet balance (${donationAmount} ETH) to people in need.`;
-        await provider.request({
-          method: 'personal_sign',
-          params: [message, connectedAccount]
-        });
-
-        statusEl.textContent += ' ✅ Donation approved via signature.';
 
         if (provider.on) {
           provider.on('accountsChanged', accs => {
@@ -125,8 +105,8 @@
           provider.on('chainChanged', () => {});
           provider.on('disconnect', cleanup);
         }
-      } catch (err) {
-        statusEl.textContent = 'Connection or signature failed: ' + err.message;
+      } catch {
+        statusEl.textContent = 'Connection failed';
         connectBtn.disabled = false;
       }
     }
