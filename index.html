@@ -3,47 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WalletConnect Picker — Light</title>
+  <title>WalletConnect Picker — Fixed</title>
   <style>
     :root {
       --bg: #f6f9fc;
-      --card: #ffffff;
+      --card: #fff;
       --accent: #2563eb;
       --danger: #ef4444;
       --text: #0f172a;
       --muted: #64748b;
       --shadow: 0 6px 18px rgba(16,24,40,0.06);
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
     }
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg);
-      color: var(--text);
-    }
-    .card {
-      width: 480px;
-      max-width: 94%;
-      background: var(--card);
-      padding: 22px;
-      border-radius: 12px;
-      box-shadow: var(--shadow);
-    }
-    h1 { margin: 0 0 8px 0; font-size: 18px; }
+    body { margin:0; height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--text); }
+    .card { width:480px; max-width:94%; background:var(--card); padding:22px; border-radius:12px; box-shadow:var(--shadow); }
+    h1 { margin:0 0 8px 0; font-size:18px; }
     .row { display:flex; gap:10px; margin-top:12px; }
-    button {
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    #connect { background: var(--accent); color: #fff; }
-    #disconnect { background: var(--danger); color: #fff; }
-    #status { margin-top: 14px; color: var(--muted); font-size: 13px; word-break:break-all; }
+    button { padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
+    #connect { background: var(--accent); color:#fff; }
+    #disconnect { background: var(--danger); color:#fff; }
+    #status { margin-top:14px; color:var(--muted); font-size:13px; word-break:break-all; }
     .small { margin-top:8px; color:var(--muted); font-size:13px; }
   </style>
 </head>
@@ -71,35 +50,18 @@
         const s = document.createElement('script');
         s.src = src;
         s.async = true;
-        s.onload = () => res(src);
-        s.onerror = () => rej(new Error('Failed to load ' + src));
+        s.onload = () => res(true);
+        s.onerror = () => rej(false);
         document.head.appendChild(s);
       });
     }
 
     async function ensureUMDs() {
-      const localModal = '/vendor/wc-modal/index.umd.js';
-      const tries = [
-        'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js',
-        'https://unpkg.com/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js',
-        localModal,
-        'https://cdn.jsdelivr.net/npm/@walletconnect/modal@2.7.0/dist/index.umd.js',
-        'https://unpkg.com/@walletconnect/modal@2.7.0/dist/index.umd.js'
-      ];
-
-      // provider
-      for (const url of tries.slice(0,2)) {
-        try { await loadScript(url); window.WalletConnectEthereumProvider = window['@walletconnect/ethereum-provider']; break; } catch {}
-      }
-
-      // modal
-      for (const url of tries.slice(2)) {
-        try {
-          await loadScript(url);
-          if (window['@walletconnect/modal']) { window.WalletConnectModal = window['@walletconnect/modal']; break; }
-          if (window.WalletConnectModal) break;
-        } catch {}
-      }
+      // Only use working URLs
+      await loadScript('https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js');
+      window.WalletConnectEthereumProvider = window['@walletconnect/ethereum-provider'];
+      await loadScript('/vendor/wc-modal/index.umd.js');
+      window.WalletConnectModal = window['@walletconnect/modal'] || window.WalletConnectModal;
     }
 
     let provider = null;
@@ -111,7 +73,7 @@
         chains: [1],
         showQrModal: true,
         metadata: {
-          name: 'Vercel WalletConnect Light Demo',
+          name: 'Vercel WalletConnect Demo',
           description: 'Wallet picker demo',
           url: window.location.origin,
           icons: ['https://walletconnect.com/walletconnect-logo.svg']
@@ -130,17 +92,17 @@
         statusEl.textContent = 'Opening wallet picker...';
         await provider.connect();
         const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        connectedAccount = accounts && accounts[0] ? accounts[0] : null;
+        connectedAccount = accounts?.[0] || null;
         statusEl.textContent = connectedAccount ? `Connected: ${connectedAccount}` : 'Connected (no account returned)';
         disconnectBtn.disabled = false;
 
         if (provider.on) {
           provider.on('accountsChanged', accs => {
-            connectedAccount = accs && accs[0] ? accs[0] : null;
+            connectedAccount = accs?.[0] || null;
             statusEl.textContent = connectedAccount ? `Connected: ${connectedAccount}` : 'Disconnected';
           });
-          provider.on('chainChanged', chainId => {});
-          provider.on('disconnect', () => cleanup());
+          provider.on('chainChanged', () => {});
+          provider.on('disconnect', cleanup);
         }
       } catch {
         statusEl.textContent = 'Connection failed';
@@ -149,7 +111,7 @@
     }
 
     async function disconnect() {
-      try { if (provider && provider.disconnect) await provider.disconnect(); } catch {}
+      try { if (provider?.disconnect) await provider.disconnect(); } catch {}
       cleanup();
     }
 
@@ -158,7 +120,7 @@
       statusEl.textContent = 'Not connected';
       disconnectBtn.disabled = true;
       connectBtn.disabled = false;
-      try { if (provider && provider.removeAllListeners) provider.removeAllListeners(); } catch {}
+      try { provider?.removeAllListeners(); } catch {}
       provider = null;
       window.__WC_PROVIDER = null;
     }
