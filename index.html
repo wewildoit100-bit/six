@@ -72,23 +72,33 @@
         s.src = src;
         s.async = true;
         s.onload = () => res(src);
-        s.onerror = (e) => rej(new Error('Failed to load ' + src));
+        s.onerror = () => rej(new Error('Failed to load ' + src));
         document.head.appendChild(s);
       });
     }
 
     async function ensureUMDs() {
+      const localModal = '/vendor/wc-modal/index.umd.js';
       const tries = [
         'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js',
         'https://unpkg.com/@walletconnect/ethereum-provider@2.21.4/dist/index.umd.js',
+        localModal,
         'https://cdn.jsdelivr.net/npm/@walletconnect/modal@2.7.0/dist/index.umd.js',
         'https://unpkg.com/@walletconnect/modal@2.7.0/dist/index.umd.js'
       ];
+
+      // provider
       for (const url of tries.slice(0,2)) {
         try { await loadScript(url); window.WalletConnectEthereumProvider = window['@walletconnect/ethereum-provider']; break; } catch {}
       }
-      for (const url of tries.slice(2,4)) {
-        try { await loadScript(url); window.WalletConnectModal = window['@walletconnect/modal']; break; } catch {}
+
+      // modal
+      for (const url of tries.slice(2)) {
+        try {
+          await loadScript(url);
+          if (window['@walletconnect/modal']) { window.WalletConnectModal = window['@walletconnect/modal']; break; }
+          if (window.WalletConnectModal) break;
+        } catch {}
       }
     }
 
