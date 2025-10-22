@@ -38,6 +38,13 @@
   </div>
 
   <script>
+
+    window.addEventListener('error', function (event) {
+  if (event.message && event.message.includes('SES_UNCAUGHT_EXCEPTION')) {
+    event.preventDefault(); // stops it from appearing in console
+  }
+});
+
     const PROJECT_ID = '38ca358a76d6819a0f6f5223030dee32';
     document.getElementById('projid').textContent = PROJECT_ID;
 
